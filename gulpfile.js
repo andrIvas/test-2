@@ -1,3 +1,5 @@
+'use strict';
+
 var gulp = require("gulp"),
     jade = require('gulp-jade'),
     prettify = require('gulp-prettify'),
@@ -15,19 +17,28 @@ var gulp = require("gulp"),
     gutil = require('gulp-util'),
     reload = browserSync.reload;
 
+
 // ====================================================
 // ====================================================
 // ============== Локальная разработка APP ============
 
 // Компилируем Jade в html
 gulp.task('jade', function() {
-    gulp.src('app/templates/pages/*.jade')
-    .pipe(jade({
-        pretty: true
-      }))
+  gulp.src('app/templates/pages/*.jade')
+    .pipe(jade())
     .on('error', log)
+    .pipe(prettify({indent_size: 2}))
     .pipe(gulp.dest('app/'))
     .pipe(reload({stream: true}));
+});
+
+// Подключаем ссылки на bower components
+gulp.task('wiredep', function () {
+  gulp.src('app/templates/common/*.jade')
+    .pipe(wiredep({
+      ignorePath: /^(\.\.\/)*\.\./
+    }))
+    .pipe(gulp.dest('app/templates/common/'))
 });
 
 // Запускаем локальный сервер (только после компиляции jade)
@@ -38,16 +49,7 @@ gulp.task('server', ['jade'], function () {
     server: {
       baseDir: 'app'
     }
-  });
-});
-
-// Подключаем ссылки на bower 
-gulp.task('wiredep', function () {
-  gulp.src('app/templates/common/*.jade')
-    .pipe(wiredep({
-      ignorePath: /^(\.\.\/)*\.\./
-    }))
-    .pipe(gulp.dest('app/templates/common/'))
+  });  
 });
 
 // слежка и запуск задач 
@@ -62,31 +64,6 @@ gulp.task('watch', function () {
 
 // Задача по-умолчанию 
 gulp.task('default', ['server', 'watch']);
-
-
-// ====================================================
-// ====================================================
-// ===================== Функции ======================
-
-// Более наглядный вывод ошибок
-var log = function (error) {
-  console.log([
-    '',
-    "----------ERROR MESSAGE START----------",
-    ("[" + error.name + " in " + error.plugin + "]"),
-    error.message,
-    "----------ERROR MESSAGE END----------",
-    ''
-  ].join('\n'));
-  this.end();
-}
-
-// ====================================================
-// ====================================================
-// =============== Важные моменты  ====================
-// gulp.task(name, deps, fn) 
-// deps - массив задач, которые будут выполнены ДО запуска задачи name
-// внимательно следите за порядком выполнения задач!
 
 
 // ====================================================
@@ -150,9 +127,61 @@ gulp.task('build', ['clean', 'jade'], function () {
 gulp.task('server-dist', function () {  
   browserSync({
     notify: false,
-    port: 8000,
+    port: 9000,
     server: {
       baseDir: 'dist'
     }
   });
 });
+
+
+// ====================================================
+// ====================================================
+// ===================== Функции ======================
+
+// Более наглядный вывод ошибок
+var log = function (error) {
+  console.log([
+    '',
+    "----------ERROR MESSAGE START----------",
+    ("[" + error.name + " in " + error.plugin + "]"),
+    error.message,
+    "----------ERROR MESSAGE END----------",
+    ''
+  ].join('\n'));
+  this.end();
+}
+
+
+// ====================================================
+// ====================================================
+// ===== Отправка проекта на сервер ===================
+
+gulp.task( 'deploy', function() {
+
+  var conn = ftp.create( {
+      host:     'dz1.kovalchuk.us',
+      user:     'kovaldn_test',
+      password: 'changed',
+      parallel: 10,
+      log: gutil.log
+  } );
+
+  var globs = [
+      'dist/**/*'
+  ];
+
+  return gulp.src(globs, { base: 'dist/', buffer: false })
+    .pipe(conn.dest( 'public_html/'));
+
+});
+
+
+// ====================================================
+// ====================================================
+// =============== Важные моменты  ====================
+// gulp.task(name, deps, fn) 
+// deps - массив задач, которые будут выполнены ДО запуска задачи name
+// внимательно следите за порядком выполнения задач!
+
+
